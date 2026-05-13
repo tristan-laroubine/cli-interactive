@@ -1,1 +1,1 @@
-export { InteractiveCLI } from './command.js';
+export { resolveArgs } from './command.js';

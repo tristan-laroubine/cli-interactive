@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import z from 'zod'
-import { InteractiveCLI } from './command.js'
+import { resolveArgs } from './command.js'
 import { input, select, confirm, number } from '@inquirer/prompts'
 
 const inputMock = input as Mock
@@ -26,7 +26,7 @@ vi.mock('@inquirer/prompts', () => ({
   select: vi.fn(),
 }))
 
-describe('InteractiveCLI', () => {
+describe('resolveArgs', () => {
   const originalArgv = process.argv
 
   beforeEach(() => {
@@ -44,7 +44,7 @@ describe('InteractiveCLI', () => {
     it('returns parsed args from argv with --no-prompt', async () => {
       process.argv = ['node', 'cli', '--name', 'Alice', '--env', 'production', '--no-prompt']
 
-      const result = await new InteractiveCLI(schema).resolveArgs()
+      const result = await resolveArgs(schema)
 
       expect(result).toEqual({ name: 'Alice', env: 'production', verbose: undefined })
     })
@@ -52,7 +52,7 @@ describe('InteractiveCLI', () => {
     it('applies schema default when value is omitted and --no-prompt is set', async () => {
       process.argv = ['node', 'cli', '--name', 'Bob', '--no-prompt']
 
-      const result = await new InteractiveCLI(schema).resolveArgs()
+      const result = await resolveArgs(schema)
 
       expect(result.env).toBe('development')
     })
@@ -60,7 +60,7 @@ describe('InteractiveCLI', () => {
     it('leaves optional field undefined when omitted with --no-prompt', async () => {
       process.argv = ['node', 'cli', '--name', 'Eve', '--no-prompt']
 
-      const result = await new InteractiveCLI(schema).resolveArgs()
+      const result = await resolveArgs(schema)
 
       expect(result.verbose).toBeUndefined()
     })
@@ -69,7 +69,7 @@ describe('InteractiveCLI', () => {
       // --verbose is a boolean flag; passing it sets cliArgs.verbose = true
       process.argv = ['node', 'cli', '--name', 'Alice', '--env', 'production', '--verbose']
 
-      await new InteractiveCLI(schema).resolveArgs()
+      await resolveArgs(schema)
 
       expect(inputMock).not.toHaveBeenCalled()
       expect(selectMock).not.toHaveBeenCalled()
@@ -83,7 +83,7 @@ describe('InteractiveCLI', () => {
         throw new Error('process.exit')
       })
 
-      await expect(new InteractiveCLI(schema).resolveArgs()).rejects.toThrow()
+      await expect(resolveArgs(schema)).rejects.toThrow()
       expect(exitSpy).toHaveBeenCalledWith(1)
     })
   })
@@ -98,7 +98,7 @@ describe('InteractiveCLI', () => {
 
       inputMock.mockResolvedValue('Charlie')
 
-      const result = await new InteractiveCLI(schema).resolveArgs()
+      const result = await resolveArgs(schema)
 
       expect(inputMock).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Your name' }),
@@ -111,7 +111,7 @@ describe('InteractiveCLI', () => {
 
       selectMock.mockResolvedValue('production')
 
-      const result = await new InteractiveCLI(schema).resolveArgs()
+      const result = await resolveArgs(schema)
 
       expect(selectMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -132,7 +132,7 @@ describe('InteractiveCLI', () => {
 
       confirmMock.mockResolvedValue(true)
 
-      const result = await new InteractiveCLI(boolSchema).resolveArgs()
+      const result = await resolveArgs(boolSchema)
 
       expect(confirmMock).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Force the operation' }),
@@ -148,7 +148,7 @@ describe('InteractiveCLI', () => {
 
       numberMock.mockResolvedValue(3000)
 
-      const result = await new InteractiveCLI(numSchema).resolveArgs()
+      const result = await resolveArgs(numSchema)
 
       expect(numberMock).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'Port number' }),
@@ -164,7 +164,7 @@ describe('InteractiveCLI', () => {
 
       inputMock.mockResolvedValue('localhost')
 
-      await new InteractiveCLI(defaultSchema).resolveArgs()
+      await resolveArgs(defaultSchema)
 
       expect(inputMock).toHaveBeenCalledWith(
         expect.objectContaining({ default: 'localhost' }),
@@ -179,7 +179,7 @@ describe('InteractiveCLI', () => {
       })
       process.argv = ['node', 'cli']
 
-      const result = await new InteractiveCLI(defaultSchema).resolveArgs()
+      const result = await resolveArgs(defaultSchema)
 
       expect(confirmMock).not.toHaveBeenCalled()
       expect(result.dryRun).toBe(false)
@@ -201,7 +201,7 @@ describe('InteractiveCLI', () => {
       })
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
-      await expect(new InteractiveCLI(schema).resolveArgs()).rejects.toThrow()
+      await expect(resolveArgs(schema)).rejects.toThrow()
       expect(exitSpy).toHaveBeenCalledWith(1)
       expect(errorSpy).toHaveBeenCalledWith(
         expect.stringContaining('name'),
@@ -221,7 +221,7 @@ describe('InteractiveCLI', () => {
       })
       vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
-      await expect(new InteractiveCLI(unsupportedSchema).resolveArgs()).rejects.toThrow()
+      await expect(resolveArgs(unsupportedSchema)).rejects.toThrow()
       expect(exitSpy).toHaveBeenCalledWith(1)
     })
   })

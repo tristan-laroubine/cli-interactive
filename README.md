@@ -31,7 +31,7 @@ npm install cli-interactive
 
 ```ts
 import z from 'zod'
-import { InteractiveCLI } from 'cli-interactive'
+import { resolveArgs } from 'cli-interactive'
 
 const schema = z.object({
   name: z.string().describe('Your name'),
@@ -42,8 +42,7 @@ const schema = z.object({
   verbose: z.boolean().optional().describe('Enable verbose output'),
 })
 
-const cli = new InteractiveCLI(schema)
-const args = await cli.resolveArgs()
+const args = await resolveArgs(schema)
 
 console.log('Running as', args.name, 'in', args.env)
 ```
@@ -75,17 +74,13 @@ Wrap any type with `.optional()` or `.default(value)` to make it non-blocking; t
 
 ## API
 
-### `new InteractiveCLI(schema)`
+### `resolveArgs(schema): Promise<z.infer<typeof schema>>`
 
-Creates a new instance bound to a Zod object schema.
+Parses `process.argv`, prompts for any missing fields, validates the combined result with Zod, and returns a fully-typed object.
 
 | Parameter | Type | Description |
 |---|---|---|
 | `schema` | `z.ZodObject<...>` | Defines the fields, types, defaults, and descriptions shown in prompts and `--help`. |
-
-### `cli.resolveArgs(): Promise<z.infer<typeof schema>>`
-
-Parses `process.argv`, prompts for any missing fields, validates the combined result with Zod, and returns a fully-typed object.
 
 Behaviour summary:
 
@@ -108,7 +103,7 @@ Behaviour summary:
 
 ```ts
 import z from 'zod'
-import { InteractiveCLI } from 'cli-interactive'
+import { resolveArgs } from 'cli-interactive'
 
 const schema = z.object({
   username: z.string().describe('npm username'),
@@ -120,7 +115,7 @@ const schema = z.object({
     .describe('Deployment target'),
 })
 
-const { username, port, open, env } = await new InteractiveCLI(schema).resolveArgs()
+const { username, port, open, env } = await resolveArgs(schema)
 ```
 
 ```sh
