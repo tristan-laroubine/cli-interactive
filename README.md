@@ -1,6 +1,6 @@
 # cli-interactive
 
-> One schema. Works for power users and casual users alike.
+> Schema-driven CLI toolkit — wraps Commander and Inquirer to serve power users (flags) and casual users (interactive prompts) from a single Zod schema.
 
 [![npm version](https://img.shields.io/npm/v/cli-interactive)](https://www.npmjs.com/package/cli-interactive)
 [![license](https://img.shields.io/npm/l/cli-interactive)](LICENSE)
