@@ -1,6 +1,6 @@
 {
   "name": "cli-interactive",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Interactive Command Line Interface",
   "type": "module",
   "main": "./dist/index.js",
