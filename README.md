@@ -1,9 +1,25 @@
 # cli-interactive
 
-> Interactive Command Line Interface
+> One schema. Works for power users and casual users alike.
 
 [![npm version](https://img.shields.io/npm/v/cli-interactive)](https://www.npmjs.com/package/cli-interactive)
 [![license](https://img.shields.io/npm/l/cli-interactive)](LICENSE)
+
+## The idea
+
+Most CLI tools force you to choose between two UX modes:
+
+- **Flags-only** — great for power users and scripts, frustrating for newcomers who have to read the docs first.
+- **Interactive wizards** — friendly for first-timers, annoying to automate.
+
+`cli-interactive` bridges both worlds with a single [Zod](https://zod.dev) schema.
+
+- You define *what* your CLI needs (field names, types, defaults, descriptions).
+- **Power users** supply everything via flags — no prompts ever appear.
+- **Casual users** just run the command with no arguments — they are guided through every missing field interactively.
+- **Scripts / CI** pass `--no-prompt` to fail fast when a required value is absent instead of hanging on a prompt.
+
+Internally the library wraps [Commander](https://github.com/tj/commander.js) for argument parsing and [@inquirer/prompts](https://github.com/SBoudrias/Inquirer.js) for the interactive layer, so you get battle-tested behaviour without the boilerplate.
 
 ## Installation
 
@@ -11,84 +27,126 @@
 npm install cli-interactive
 ```
 
-## Usage
+## Quick start
 
 ```ts
-import { hello } from 'cli-interactive'
+import z from 'zod'
+import { InteractiveCLI } from 'cli-interactive'
 
-console.log(hello('world')) // Hello, world!
+const schema = z.object({
+  name: z.string().describe('Your name'),
+  env: z
+    .enum(['development', 'production', 'test'])
+    .default('development')
+    .describe('Target environment'),
+  verbose: z.boolean().optional().describe('Enable verbose output'),
+})
+
+const cli = new InteractiveCLI(schema)
+const args = await cli.resolveArgs()
+
+console.log('Running as', args.name, 'in', args.env)
 ```
 
-## Development
+Then run it:
 
 ```sh
-# Install dependencies
-npm install
+# Power-user mode — no prompts
+node dist/index.js --name Alice --env production
 
-# Build
-npm run build
+# Casual mode — prompts for every missing field
+node dist/index.js
 
-# Run tests
-npm test
-
-# Watch mode
-npm run test:watch
-
-# Coverage
-npm run test:coverage
-
-# Lint
-npm run lint
-
-# Type-check
-npm run typecheck
+# CI / script mode — exits with code 1 if a required field is missing
+node dist/index.js --name Alice --no-prompt
 ```
 
-## Commit convention
+## How field types map to prompts
 
-This project follows [Conventional Commits](https://www.conventionalcommits.org/).
-Commit messages are enforced by [commitlint](https://commitlint.js.org/) via a Husky `commit-msg` hook.
+| Zod type | Inquirer prompt |
+|---|---|
+| `z.string()` | `input` — free text |
+| `z.number()` | `number` — numeric input |
+| `z.boolean()` | `confirm` — yes / no |
+| `z.enum([...])` | `select` — arrow-key list |
+| `z.date()` | `input` — parsed as `new Date()` |
 
+Wrap any type with `.optional()` or `.default(value)` to make it non-blocking; the prompt will pre-fill the default or skip validation when the user presses Enter.
+
+## API
+
+### `new InteractiveCLI(schema)`
+
+Creates a new instance bound to a Zod object schema.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `schema` | `z.ZodObject<...>` | Defines the fields, types, defaults, and descriptions shown in prompts and `--help`. |
+
+### `cli.resolveArgs(): Promise<z.infer<typeof schema>>`
+
+Parses `process.argv`, prompts for any missing fields, validates the combined result with Zod, and returns a fully-typed object.
+
+Behaviour summary:
+
+| Situation | Result |
+|---|---|
+| All fields supplied via flags | Returns immediately, no prompts |
+| Some fields missing, no `--no-prompt` | Prompts only for the missing ones |
+| `--no-prompt` and required field missing | Logs the validation error and calls `process.exit(1)` |
+| Prompt throws (e.g. non-interactive TTY) | Logs the error and calls `process.exit(1)` |
+
+### Built-in flags
+
+| Flag | Effect |
+|---|---|
+| `--<field> <value>` | Supplies a value for the named field (auto-generated from the schema). |
+| `--no-prompt` | Disables all interactive prompts. |
+| `--help` | Prints usage information (provided by Commander). |
+
+## Example — multiple field types
+
+```ts
+import z from 'zod'
+import { InteractiveCLI } from 'cli-interactive'
+
+const schema = z.object({
+  username: z.string().describe('npm username'),
+  port: z.number().default(3000).describe('Dev server port'),
+  open: z.boolean().optional().describe('Open browser on start'),
+  env: z
+    .enum(['development', 'staging', 'production'])
+    .default('development')
+    .describe('Deployment target'),
+})
+
+const { username, port, open, env } = await new InteractiveCLI(schema).resolveArgs()
 ```
-feat: add new prompt component
-fix: handle empty input correctly
-docs: update README
-```
-
-## Publishing
-
-Package publishing is guarded by `prepublishOnly`, which runs `typecheck`, `lint`, `test` and `build` in order before any publish.
-
-### Authenticate with npm
 
 ```sh
-npm login
+# Supply everything — zero prompts
+node dist/index.js --username alice --port 4000 --env staging
+
+# Supply nothing — guided step by step
+node dist/index.js
+# ? npm username › 
+# ? Dev server port › (3000)
+# ? Open browser on start › (y/N)
+# ? Deployment target › (Use arrow keys)
+#   development
+# ❯ staging
+#   production
 ```
 
-### Publish a new version
+## Requirements
 
-```sh
-# Bump version (patch | minor | major)
-npm version patch
+- Node.js 22+
+- TypeScript 6+
+- `zod` ≥ 4.4
 
-# Publish to npm registry
-npm publish
-```
+## Contributing
 
-> The `files` field in `package.json` ensures only the `dist/` folder is shipped to consumers.
-
-### Publish a pre-release (e.g. beta)
-
-```sh
-npm version prerelease --preid=beta
-npm publish --tag beta
-```
-
-### Dry run (inspect what will be published)
-
-```sh
-npm pack --dry-run
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
