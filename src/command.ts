@@ -1,5 +1,15 @@
 import z, { ZodRawShape } from "zod";
-import { ZodRawShape as ZodRawShapeV3, ZodObject as ZodObjectV3 } from "zod/v3";
+import {
+	ZodRawShape as ZodRawShapeV3,
+	ZodObject as ZodObjectV3,
+	ZodOptional as ZodOptionalV3,
+	ZodDefault as ZodDefaultV3,
+	ZodString as ZodStringV3,
+	ZodNumber as ZodNumberV3,
+	ZodDate as ZodDateV3,
+	ZodBoolean as ZodBooleanV3,
+	ZodEnum as ZodEnumV3,
+} from "zod/v3";
 import { Command } from "commander";
 import { input, select, confirm, number } from "@inquirer/prompts";
 export interface SystemOptions {
@@ -66,11 +76,11 @@ export class InteractiveCLI<T extends ZodObjectCombination> {
 			const parameter = this.schema.shape[key] as z.ZodTypeAny;
 			const { rowType: rawParameter, defaultValue } = this.extractRawZodType(parameter);
 			const flag = `--${key}`;
-			if (rawParameter instanceof z.ZodBoolean) {
+			if (rawParameter instanceof z.ZodBoolean || rawParameter instanceof ZodBooleanV3) {
 				// use option() in all cases — boolean fields can be prompted when missing
 				command.option(`${flag}`, rawParameter.description, defaultValue as boolean | undefined);
-			} else if (rawParameter instanceof z.ZodEnum) {
-				const options = rawParameter.options.join(", ");
+			} else if (rawParameter instanceof z.ZodEnum || rawParameter instanceof ZodEnumV3) {
+				const options = (rawParameter.options as string[]).join(", ");
 				command.option(
 					`${flag} <value>`,
 					`${rawParameter.description} (options: ${options})`,
@@ -93,34 +103,34 @@ export class InteractiveCLI<T extends ZodObjectCombination> {
 		const { rowType: innerParameter, isOptional, defaultValue } = this.extractRawZodType(originalParameter);
 		const message = originalParameter.description ?? innerParameter.description ?? `Enter a value for ${name}`;
 
-		if (innerParameter instanceof z.ZodString) {
+		if (innerParameter instanceof z.ZodString || innerParameter instanceof ZodStringV3) {
 			const value = await input({
 				message,
 				default: defaultValue as string | undefined,
 				required: !isOptional && defaultValue === undefined,
 			});
 			return originalParameter.parse(value || undefined) as z.infer<T>;
-		} else if (innerParameter instanceof z.ZodNumber) {
+		} else if (innerParameter instanceof z.ZodNumber || innerParameter instanceof ZodNumberV3) {
 			const value = await number({
 				message,
 				default: defaultValue as number | undefined,
 				required: !isOptional && defaultValue === undefined,
 			});
 			return originalParameter.parse(value) as z.infer<T>;
-		} else if (innerParameter instanceof z.ZodDate) {
+		} else if (innerParameter instanceof z.ZodDate || innerParameter instanceof ZodDateV3) {
 			const raw = await input({
 				message,
 				default: defaultValue instanceof Date ? defaultValue.toISOString() : (defaultValue as string | undefined),
 				required: !isOptional && defaultValue === undefined,
 			});
 			return originalParameter.parse(raw ? new Date(raw) : undefined) as z.infer<T>;
-		} else if (innerParameter instanceof z.ZodBoolean) {
+		} else if (innerParameter instanceof z.ZodBoolean || innerParameter instanceof ZodBooleanV3) {
 			const value = await confirm({
 				message,
 				default: defaultValue as boolean | undefined,
 			});
 			return originalParameter.parse(value) as z.infer<T>;
-		} else if (innerParameter instanceof z.ZodEnum) {
+		} else if (innerParameter instanceof z.ZodEnum || innerParameter instanceof ZodEnumV3) {
 			const choices = (innerParameter.options as string[]).map((opt) => ({
 				value: opt,
 			}));
@@ -146,16 +156,17 @@ export class InteractiveCLI<T extends ZodObjectCombination> {
             isOptional: boolean;
             defaultValue?: unknown;
         }) {
-            if (param instanceof z.ZodOptional) {
-                return recursiveExtractRawZodType(param.def.innerType as z.ZodTypeAny, {
+            if (param instanceof z.ZodOptional || param instanceof ZodOptionalV3) {
+                return recursiveExtractRawZodType((param as any)._def.innerType as z.ZodTypeAny, {
                     ...opts,
                     isOptional: true,
                 });
             }
-            if (param instanceof z.ZodDefault) {
-                return recursiveExtractRawZodType(param.def.innerType as z.ZodTypeAny, {
+            if (param instanceof z.ZodDefault || param instanceof ZodDefaultV3) {
+                const dv = (param as any)._def.defaultValue;
+                return recursiveExtractRawZodType((param as any)._def.innerType as z.ZodTypeAny, {
                     ...opts,
-                    defaultValue: param.def.defaultValue as unknown,
+                    defaultValue: typeof dv === 'function' ? dv() : dv,
                 });
             }
             return {
