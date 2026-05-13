@@ -1,13 +1,16 @@
 import z, { ZodRawShape } from "zod";
+import { ZodRawShape as ZodRawShapeV3, ZodObject as ZodObjectV3 } from "zod/v3";
 import { Command } from "commander";
 import { input, select, confirm, number } from "@inquirer/prompts";
-
-
 export interface SystemOptions {
 	noPrompt?: boolean;
 }
 
-export class InteractiveCLI<T extends z.ZodObject<ZodRawShape>> {
+type ZodRawShapeCombination = ZodRawShape | ZodRawShapeV3;
+type ZodObjectCombination = z.ZodObject<ZodRawShape> | ZodObjectV3<ZodRawShapeV3>;
+
+
+export class InteractiveCLI<T extends ZodObjectCombination> {
     
     public readonly schema: T;
 
@@ -17,14 +20,14 @@ export class InteractiveCLI<T extends z.ZodObject<ZodRawShape>> {
 
 	async resolveArgs(): Promise<z.infer<T>> {
 		try {
-			const shape: ZodRawShape = this.schema.shape;
+			const shape: ZodRawShapeCombination = this.schema.shape;
 			const cliArgs = this.extractParametersFromArgv();
 			const missingParameters = Object.keys(shape).filter(
 				(key) =>
 					(cliArgs as Record<string, unknown>)?.[key] === undefined,
 			);
 			const promptedValues: Partial<z.infer<T>> = {};
-		if (!cliArgs.noPrompt && cliArgs.prompt !== false){
+		if (!cliArgs.noPrompt){
 				for (const key of missingParameters) {
 					const parameter = this.schema.shape[key];
 					try {
@@ -47,7 +50,7 @@ export class InteractiveCLI<T extends z.ZodObject<ZodRawShape>> {
 				...cliArgs,
 				...promptedValues,
 			} as z.infer<T>;
-			return this.schema.parse(combinedArgs);
+			return this.schema.parse(combinedArgs) as z.output<T>;
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				this.explainZodError(error);
