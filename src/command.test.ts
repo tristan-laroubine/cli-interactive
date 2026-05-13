@@ -79,7 +79,7 @@ describe('InteractiveCLI', () => {
     it('calls process.exit(1) when --no-prompt is set but a required field is missing', async () => {
       process.argv = ['node', 'cli', '--no-prompt'] // name is required, no default
 
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((_code) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
         throw new Error('process.exit')
       })
 
@@ -196,7 +196,7 @@ describe('InteractiveCLI', () => {
 
       inputMock.mockRejectedValue(new Error('TTY unavailable'))
 
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((_code) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
         throw new Error('process.exit')
       })
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -216,7 +216,7 @@ describe('InteractiveCLI', () => {
       })
       process.argv = ['node', 'cli']
 
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((_code) => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
         throw new Error('process.exit')
       })
       vi.spyOn(console, 'error').mockImplementation(() => undefined)
